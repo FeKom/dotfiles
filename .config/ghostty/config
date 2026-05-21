@@ -1,0 +1,29 @@
+background-opacity = 1
+background-blur-radius = 0
+unfocused-split-opacity = 1
+window-decoration = true
+macos-option-as-alt = true
+mouse-hide-while-typing = true
+font-family = JetBrains Mono
+theme = Abernathy
+
+# Navegação entre splits
+keybind = super+p=goto_split:previous
+keybind = super+n=goto_split:next
+
+# Split na parte de baixo
+keybind = super+b=new_split:down
+
+# Navegação entre palavras
+keybind = super+j=text:\x1bf
+keybind = super+h=text:\x1bb
+
+# Tmux: Cmd+key envia Ctrl+b (prefixo) + key (atalhos diretos)
+keybind = super+l=text:\x02l
+keybind = super+g=text:\x02g
+
+# Neovim/Terminal: Cmd envia Ctrl para atalhos VSCode-like
+keybind = super+s=text:\x13
+keybind = super+z=text:\x1a
+keybind = super+shift+z=text:\x19
+keybind = super+e=text:\x05
