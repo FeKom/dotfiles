@@ -169,28 +169,6 @@ create_symlinks() {
   link "$DOTFILES_DIR/.config/zed/settings.json"       "$HOME/.config/zed/settings.json"
 }
 
-# ─── Git identity ────────────────────────────────────────────────────────────
-# ~/.gitconfig is not versioned, so each machine keeps its own account.
-setup_git_identity() {
-  if git config --global user.email &>/dev/null; then
-    log "Git identity already set: $(git config --global user.email)"
-    return 0
-  fi
-
-  if ! { : < /dev/tty; } 2>/dev/null; then
-    warn "No terminal to ask for git identity. Set it with git config --global."
-    return 0
-  fi
-
-  local name email
-  read -rp "Git user.name for this machine: " name < /dev/tty
-  read -rp "Git user.email for this machine: " email < /dev/tty
-  git config --global user.name "$name"
-  git config --global user.email "$email"
-  git config --global init.defaultBranch main
-  log "  wrote ~/.gitconfig"
-}
-
 # ─── GitHub auth ─────────────────────────────────────────────────────────────
 # Lets plain `git` reuse the gh login for HTTPS pull/push.
 setup_gh_git() {
@@ -232,7 +210,6 @@ post_install_notes() {
     echo "  3. Log out and back in so zsh becomes the default shell"
     echo "  4. Inside nvim, run :Lazy to install plugins"
   fi
-  echo "  -  Git identity: ~/.gitconfig (gh auth login for GitHub)"
   echo ""
 }
 
@@ -261,7 +238,6 @@ main() {
 
   install_ohmyzsh
   create_symlinks
-  setup_git_identity
   setup_gh_git
   set_default_shell
   post_install_notes

@@ -90,9 +90,6 @@ exec zsh          # reload shell
 nvim              # opens nvim, Lazy installs plugins on first run
 ```
 
-`~/.gitconfig` is not versioned. `install.sh` asks for name and email on
-each machine and writes them there with `git config --global`.
-
 ## Syncing changes
 
 After editing any config:
