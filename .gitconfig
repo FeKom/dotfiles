@@ -1,6 +1,0 @@
-[init]
-	defaultBranch = main
-# Identity (name/email) lives per machine in ~/.gitconfig.local,
-# created by install.sh. Keeps personal and work accounts apart.
-[include]
-	path = ~/.gitconfig.local

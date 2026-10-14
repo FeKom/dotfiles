@@ -157,7 +157,6 @@ link() {
 create_symlinks() {
   log "Creating symlinks..."
   link "$DOTFILES_DIR/.zshrc"                          "$HOME/.zshrc"
-  link "$DOTFILES_DIR/.gitconfig"                      "$HOME/.gitconfig"
   link "$DOTFILES_DIR/.tmux.conf"                      "$HOME/.tmux.conf"
   link "$DOTFILES_DIR/.config/zsh/prompt.zsh"          "$HOME/.config/zsh/prompt.zsh"
   link "$DOTFILES_DIR/.config/ohmyposh/emodipt-extend.omp.json" \
@@ -173,23 +172,25 @@ create_symlinks() {
 }
 
 # ─── Git identity ────────────────────────────────────────────────────────────
-# .gitconfig includes ~/.gitconfig.local, so each machine has its own account.
+# ~/.gitconfig is not versioned, so each machine keeps its own account.
 setup_git_identity() {
-  local local_cfg="$HOME/.gitconfig.local"
-  [[ -f "$local_cfg" ]] && { log "Git identity already set in $local_cfg"; return 0; }
+  if git config --global user.email &>/dev/null; then
+    log "Git identity already set: $(git config --global user.email)"
+    return 0
+  fi
 
-  # -r only checks permissions; opening proves a controlling terminal exists.
   if ! { : < /dev/tty; } 2>/dev/null; then
-    warn "No terminal to ask for git identity. Create $local_cfg later."
+    warn "No terminal to ask for git identity. Set it with git config --global."
     return 0
   fi
 
   local name email
   read -rp "Git user.name for this machine: " name < /dev/tty
   read -rp "Git user.email for this machine: " email < /dev/tty
-  git config --file "$local_cfg" user.name "$name"
-  git config --file "$local_cfg" user.email "$email"
-  log "  wrote $local_cfg"
+  git config --global user.name "$name"
+  git config --global user.email "$email"
+  git config --global init.defaultBranch main
+  log "  wrote ~/.gitconfig"
 }
 
 # ─── GitHub auth ─────────────────────────────────────────────────────────────
@@ -233,7 +234,7 @@ post_install_notes() {
     echo "  3. Log out and back in so zsh becomes the default shell"
     echo "  4. Inside nvim, run :Lazy to install plugins"
   fi
-  echo "  -  Git identity: ~/.gitconfig.local (gh auth login for GitHub)"
+  echo "  -  Git identity: ~/.gitconfig (gh auth login for GitHub)"
   echo ""
 }
 

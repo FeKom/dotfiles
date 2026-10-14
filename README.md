@@ -7,7 +7,6 @@ My personal development environment — zsh, Neovim (LazyVim), Ghostty, tmux, Ze
 | Config | Path |
 |---|---|
 | zsh (Oh My Zsh + Oh My Posh) | `~/.zshrc` |
-| git | `~/.gitconfig` |
 | tmux | `~/.tmux.conf` |
 | Ghostty terminal | `~/.config/ghostty/config` |
 | Oh My Posh theme | `~/.config/ohmyposh/emodipt-extend.omp.json` |
@@ -91,12 +90,8 @@ exec zsh          # reload shell
 nvim              # opens nvim, Lazy installs plugins on first run
 ```
 
-Git identity is per machine. `install.sh` asks for name and email and writes
-`~/.gitconfig.local`, which `.gitconfig` includes. To change it later:
-
-```bash
-git config --file ~/.gitconfig.local user.email "you@company.com"
-```
+`~/.gitconfig` is not versioned. `install.sh` asks for name and email on
+each machine and writes them there with `git config --global`.
 
 ## Syncing changes
 
