@@ -22,6 +22,27 @@ cd ~/dotfiles
 ./install.sh
 ```
 
+### Ubuntu
+
+Terminal-only setup using `apt` and `git clone` (no `curl | sh`):
+
+- zsh, Oh My Zsh, autosuggestions, syntax highlighting
+- native prompt (`.config/zsh/prompt.zsh`), mirroring the Oh My Posh theme
+- eza, zoxide, fzf, direnv, tmux, JetBrains Mono font
+- nvm (git clone), Node LTS with npm, yarn
+- Neovim from `ppa:neovim-ppa/unstable` (LazyVim needs >= 0.11), ripgrep, fd
+
+Ghostty and Zed configs are not linked on Ubuntu.
+
+Day-to-day flow after install:
+
+```bash
+gh auth login               # once; install.sh runs `gh auth setup-git` if already logged in
+gh repo clone org/project
+cd project                  # .nvmrc present → nvm switches (and installs) Node
+npm install && npm run dev
+```
+
 ### Windows
 
 Use **WSL2** (Ubuntu 22.04+) and run the script inside the WSL terminal. Native Windows (PowerShell) is not supported.
@@ -70,11 +91,11 @@ exec zsh          # reload shell
 nvim              # opens nvim, Lazy installs plugins on first run
 ```
 
-Update your git identity if needed:
+Git identity is per machine. `install.sh` asks for name and email and writes
+`~/.gitconfig.local`, which `.gitconfig` includes. To change it later:
 
 ```bash
-git config --global user.name  "Your Name"
-git config --global user.email "you@example.com"
+git config --file ~/.gitconfig.local user.email "you@company.com"
 ```
 
 ## Syncing changes

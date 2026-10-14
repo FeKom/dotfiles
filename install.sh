@@ -58,73 +58,57 @@ install_packages_macos() {
   fi
 }
 
+# Ubuntu/Debian: apt + git clone only. No curl | sh.
 install_packages_debian() {
   log "Updating apt..."
   sudo apt-get update -qq
-  sudo apt-get install -y --no-install-recommends \
-    git zsh tmux curl wget unzip build-essential \
-    direnv jq
+  sudo apt-get install -y \
+    git zsh tmux build-essential ca-certificates curl \
+    zsh-syntax-highlighting zsh-autosuggestions \
+    zoxide fzf direnv jq gh fonts-jetbrains-mono
 
-  # Neovim — use AppImage if apt version is too old (< 0.9)
-  if ! command -v nvim &>/dev/null || [[ "$(nvim --version | head -1 | grep -oP '\d+\.\d+')" < "0.9" ]]; then
-    log "Installing Neovim from AppImage..."
-    local nvim_url="https://github.com/neovim/neovim/releases/latest/download/nvim-linux-x86_64.appimage"
-    curl -Lo /tmp/nvim.appimage "$nvim_url"
-    chmod +x /tmp/nvim.appimage
-    /tmp/nvim.appimage --appimage-extract-and-run --version &>/dev/null \
-      && sudo mv /tmp/nvim.appimage /usr/local/bin/nvim \
-      || { /tmp/nvim.appimage --appimage-extract -q; sudo mv squashfs-root /opt/nvim; sudo ln -sf /opt/nvim/usr/bin/nvim /usr/local/bin/nvim; }
+  # eza is only in apt from Ubuntu 24.04 on; .zshrc falls back to plain ls.
+  sudo apt-get install -y eza || warn "eza not available in apt, skipping"
+}
+
+# LazyVim needs Neovim >= 0.11; Ubuntu's own package is older and the
+# stable PPA has no build for recent releases, so use the unstable PPA.
+install_neovim_debian() {
+  log "Installing Neovim from ppa:neovim-ppa/unstable..."
+  sudo apt-get install -y software-properties-common
+  sudo add-apt-repository -y ppa:neovim-ppa/unstable
+  sudo apt-get update -qq
+  # python3-venv: Mason installs Python tools (debugpy, black) in venvs.
+  sudo apt-get install -y neovim ripgrep fd-find unzip xclip python3-venv
+}
+
+# nvm has no apt package; this is nvm's documented manual (git) install.
+# curl is only used by nvm itself to download Node binaries.
+install_node_stack() {
+  export NVM_DIR="$HOME/.nvm"
+  if [[ ! -d "$NVM_DIR" ]]; then
+    log "Cloning nvm..."
+    git clone --quiet https://github.com/nvm-sh/nvm.git "$NVM_DIR"
+    local tag
+    tag="$(git -C "$NVM_DIR" describe --abbrev=0 --tags --match 'v[0-9]*' \
+      "$(git -C "$NVM_DIR" rev-list --tags --max-count=1)")"
+    git -C "$NVM_DIR" checkout --quiet "$tag"
+  else
+    log "nvm already installed, skipping clone."
   fi
 
-  # eza
-  if ! command -v eza &>/dev/null; then
-    log "Installing eza..."
-    sudo apt-get install -y gpg
-    sudo mkdir -p /etc/apt/keyrings
-    wget -qO- https://raw.githubusercontent.com/eza-community/eza/main/deb.asc | sudo gpg --dearmor -o /etc/apt/keyrings/gierens.gpg
-    echo "deb [signed-by=/etc/apt/keyrings/gierens.gpg] http://deb.gierens.de stable main" | sudo tee /etc/apt/sources.list.d/gierens.list
-    sudo apt-get update -qq && sudo apt-get install -y eza
-  fi
-
-  # zoxide
-  command -v zoxide &>/dev/null || curl -sS https://raw.githubusercontent.com/ajeetdsouza/zoxide/main/install.sh | bash
-
-  # oh-my-posh
-  command -v oh-my-posh &>/dev/null || {
-    log "Installing oh-my-posh..."
-    curl -s https://ohmyposh.dev/install.sh | bash -s -- -d ~/.local/bin
-  }
-
-  # zsh-syntax-highlighting
-  [[ -d ~/.zsh/zsh-syntax-highlighting ]] || \
-    git clone --depth=1 https://github.com/zsh-users/zsh-syntax-highlighting.git ~/.zsh/zsh-syntax-highlighting
-
-  # zsh-autosuggestions (oh-my-zsh custom plugin)
-  ZSH_CUSTOM="${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}"
-  [[ -d "$ZSH_CUSTOM/plugins/zsh-autosuggestions" ]] || \
-    git clone --depth=1 https://github.com/zsh-users/zsh-autosuggestions "$ZSH_CUSTOM/plugins/zsh-autosuggestions"
-
-  # bun
-  command -v bun &>/dev/null || curl -fsSL https://bun.sh/install | bash
-
-  # nvm
-  [[ -d ~/.nvm ]] || {
-    log "Installing nvm..."
-    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
-  }
-
-  # SDKMAN (for Java)
-  [[ -d ~/.sdkman ]] || {
-    log "Installing SDKMAN..."
-    curl -s "https://get.sdkman.io" | bash || true
-  }
-
-  # gh (GitHub CLI)
-  command -v gh &>/dev/null || {
-    curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
-    echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list
-    sudo apt-get update -qq && sudo apt-get install -y gh
-  }
+  # nvm.sh is not compatible with `set -u`.
+  set +u
+  # shellcheck source=/dev/null
+  . "$NVM_DIR/nvm.sh"
+  log "Installing Node LTS (comes with npm)..."
+  nvm install --lts
+  nvm alias default 'lts/*'
+  log "Installing yarn and tree-sitter CLI..."
+  # apt's tree-sitter-cli (0.20) is too old for nvim-treesitter. Its install
+  # script fetches the binary, and npm >= 11 blocks scripts unless allowed.
+  npm install -g --allow-scripts=tree-sitter-cli,yarn yarn tree-sitter-cli
+  set -u
 }
 
 install_packages_fedora() {
@@ -152,7 +136,7 @@ install_packages_fedora() {
 install_ohmyzsh() {
   if [[ ! -d ~/.oh-my-zsh ]]; then
     log "Installing Oh My Zsh..."
-    RUNZSH=no CHSH=no sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
+    git clone --quiet --depth=1 https://github.com/ohmyzsh/ohmyzsh.git ~/.oh-my-zsh
   else
     log "Oh My Zsh already installed, skipping."
   fi
@@ -175,11 +159,49 @@ create_symlinks() {
   link "$DOTFILES_DIR/.zshrc"                          "$HOME/.zshrc"
   link "$DOTFILES_DIR/.gitconfig"                      "$HOME/.gitconfig"
   link "$DOTFILES_DIR/.tmux.conf"                      "$HOME/.tmux.conf"
-  link "$DOTFILES_DIR/.config/ghostty/config"          "$HOME/.config/ghostty/config"
+  link "$DOTFILES_DIR/.config/zsh/prompt.zsh"          "$HOME/.config/zsh/prompt.zsh"
   link "$DOTFILES_DIR/.config/ohmyposh/emodipt-extend.omp.json" \
                                                         "$HOME/.config/ohmyposh/emodipt-extend.omp.json"
+
   link "$DOTFILES_DIR/.config/nvim"                    "$HOME/.config/nvim"
+
+  # GUI apps are not installed on Ubuntu.
+  [[ "$OS" == "debian" || "$OS" == "wsl" ]] && return 0
+
+  link "$DOTFILES_DIR/.config/ghostty/config"          "$HOME/.config/ghostty/config"
   link "$DOTFILES_DIR/.config/zed/settings.json"       "$HOME/.config/zed/settings.json"
+}
+
+# ─── Git identity ────────────────────────────────────────────────────────────
+# .gitconfig includes ~/.gitconfig.local, so each machine has its own account.
+setup_git_identity() {
+  local local_cfg="$HOME/.gitconfig.local"
+  [[ -f "$local_cfg" ]] && { log "Git identity already set in $local_cfg"; return 0; }
+
+  # -r only checks permissions; opening proves a controlling terminal exists.
+  if ! { : < /dev/tty; } 2>/dev/null; then
+    warn "No terminal to ask for git identity. Create $local_cfg later."
+    return 0
+  fi
+
+  local name email
+  read -rp "Git user.name for this machine: " name < /dev/tty
+  read -rp "Git user.email for this machine: " email < /dev/tty
+  git config --file "$local_cfg" user.name "$name"
+  git config --file "$local_cfg" user.email "$email"
+  log "  wrote $local_cfg"
+}
+
+# ─── GitHub auth ─────────────────────────────────────────────────────────────
+# Lets plain `git` reuse the gh login for HTTPS pull/push.
+setup_gh_git() {
+  command -v gh &>/dev/null || return 0
+  if gh auth status &>/dev/null; then
+    gh auth setup-git
+    log "git now uses gh credentials for HTTPS"
+  else
+    warn "gh not logged in. Run: gh auth login && gh auth setup-git"
+  fi
 }
 
 # ─── Set Zsh as default shell ─────────────────────────────────────────────────
@@ -205,12 +227,13 @@ post_install_notes() {
   if [[ "$OS" == "macos" ]]; then
     echo "  2. Install a Nerd Font: brew install --cask font-jetbrains-mono-nerd-font"
     echo "  3. Set the font in Ghostty (already configured to JetBrains Mono)"
+    echo "  4. Inside nvim, run :Lazy to install plugins"
   else
-    echo "  2. Install a Nerd Font for the prompt icons to render correctly:"
-    echo "     https://www.nerdfonts.com/font-downloads  (JetBrainsMono Nerd Font)"
+    echo "  2. Set your terminal font to JetBrains Mono (installed via apt)"
+    echo "  3. Log out and back in so zsh becomes the default shell"
+    echo "  4. Inside nvim, run :Lazy to install plugins"
   fi
-  echo "  3. Inside nvim, run :Lazy to install plugins"
-  echo "  4. Edit ~/.gitconfig to update your name/email if needed"
+  echo "  -  Git identity: ~/.gitconfig.local (gh auth login for GitHub)"
   echo ""
 }
 
@@ -230,7 +253,7 @@ main() {
 
   case "$OS" in
     macos)          install_packages_macos ;;
-    debian|wsl)     install_packages_debian ;;
+    debian|wsl)     install_packages_debian; install_neovim_debian; install_node_stack ;;
     fedora)         install_packages_fedora ;;
     arch)           warn "Arch Linux: installing base packages only"
                     sudo pacman -Sy --noconfirm git zsh tmux neovim eza zoxide direnv jq ;;
@@ -239,6 +262,8 @@ main() {
 
   install_ohmyzsh
   create_symlinks
+  setup_git_identity
+  setup_gh_git
   set_default_shell
   post_install_notes
 }

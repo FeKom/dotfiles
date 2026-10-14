@@ -103,7 +103,7 @@ return {
 
   -- 📦 Mason: Ensure Python tools are installed
   {
-    "williamboman/mason.nvim",
+    "mason-org/mason.nvim",
     opts = {
       ensure_installed = {
         "pyright", -- LSP

@@ -4,7 +4,7 @@
 export ZSH="$HOME/.oh-my-zsh"
 ZSH_THEME=""
 CASE_SENSITIVE="false"
-plugins=(git zsh-autosuggestions)
+plugins=(git)
 source $ZSH/oh-my-zsh.sh
 
 # ╭──────────────────────────────────────────╮
@@ -20,20 +20,25 @@ _os() {
 OS="$(_os)"
 
 # ╭──────────────────────────────────────────╮
-# │         Syntax Highlighting               │
+# │   Autosuggestions + Syntax Highlighting   │
 # ╰──────────────────────────────────────────╯
-if [[ "$OS" == "macos" ]]; then
-  [[ -f /opt/homebrew/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh ]] && \
-    source /opt/homebrew/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
-else
-  # installed via apt or cloned by install.sh
-  for _path in \
-    /usr/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh \
-    /usr/share/zsh/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh \
-    "$HOME/.zsh/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh"; do
-    [[ -f "$_path" ]] && { source "$_path"; break; }
+# Paths cover Homebrew, apt and a manual clone. Highlighting must load last.
+_source_first() {
+  local f
+  for f in "$@"; do
+    [[ -f "$f" ]] && { source "$f"; return 0; }
   done
-fi
+  return 1
+}
+_source_first \
+  /opt/homebrew/share/zsh-autosuggestions/zsh-autosuggestions.zsh \
+  /usr/share/zsh-autosuggestions/zsh-autosuggestions.zsh \
+  "$ZSH/custom/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh"
+_source_first \
+  /opt/homebrew/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh \
+  /usr/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh \
+  /usr/share/zsh/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh \
+  "$HOME/.zsh/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh"
 
 # ╭──────────────────────────────────────────╮
 # │         Zoxide (smarter cd)               │
@@ -43,8 +48,12 @@ command -v zoxide &>/dev/null && eval "$(zoxide init zsh)"
 # ╭──────────────────────────────────────────╮
 # │           Oh My Posh Prompt               │
 # ╰──────────────────────────────────────────╯
-command -v oh-my-posh &>/dev/null && \
+# Ubuntu has no apt package for oh-my-posh, so fall back to a native prompt.
+if command -v oh-my-posh &>/dev/null; then
   eval "$(oh-my-posh init zsh --config ~/.config/ohmyposh/emodipt-extend.omp.json)"
+else
+  [[ -f ~/.config/zsh/prompt.zsh ]] && source ~/.config/zsh/prompt.zsh
+fi
 
 # ╭──────────────────────────────────────────╮
 # │               Direnv                     │
@@ -56,14 +65,46 @@ command -v direnv &>/dev/null && eval "$(direnv hook zsh)"
 # ╰──────────────────────────────────────────╯
 export NVM_DIR="$HOME/.nvm"
 _load_nvm() {
-  [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+  # git clone install lives in ~/.nvm; Homebrew keeps the script elsewhere.
+  _source_first "$NVM_DIR/nvm.sh" /opt/homebrew/opt/nvm/nvm.sh
   [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
 }
-nvm()  { unfunction nvm node npm npx pnpm; _load_nvm; nvm  "$@"; }
-node() { unfunction nvm node npm npx pnpm; _load_nvm; node "$@"; }
-npm()  { unfunction nvm node npm npx pnpm; _load_nvm; npm  "$@"; }
-npx()  { unfunction nvm node npm npx pnpm; _load_nvm; npx  "$@"; }
-pnpm() { unfunction nvm node npm npx pnpm; _load_nvm; pnpm "$@"; }
+# Put nvm's default Node on PATH up front, so nvim (Mason, treesitter) and
+# other tools find node/npm without loading the slow nvm.sh.
+_nvm_default_bin() {
+  local v i
+  v="$(<"$NVM_DIR/alias/default")" 2>/dev/null || return 1
+  # Follow alias chains such as lts/* -> lts/krypton -> v24.x.
+  for i in 1 2 3; do
+    [[ -f "$NVM_DIR/alias/$v" ]] || break
+    v="$(<"$NVM_DIR/alias/$v")"
+  done
+  v="${v#v}"
+  local -a bins=("$NVM_DIR"/versions/node/v${v}(|.*)/bin(Nn))
+  (( ${#bins} )) && print -r -- "${bins[-1]}"
+}
+_node_bin="$(_nvm_default_bin)"
+unfunction _nvm_default_bin
+if [[ -n "$_node_bin" ]]; then
+  export PATH="$_node_bin:$PATH"
+  _nvm_cmds=(nvm)
+else
+  _nvm_cmds=(nvm node npm npx pnpm yarn corepack)
+fi
+unset _node_bin
+for _cmd in $_nvm_cmds; do
+  eval "${_cmd}() { unfunction \$_nvm_cmds; _load_nvm; ${_cmd} \"\$@\"; }"
+done
+unset _cmd
+
+# Switch Node when entering a project with .nvmrc, installing it if missing.
+_auto_nvmrc() {
+  [[ -f .nvmrc ]] || return 0
+  nvm use --silent 2>/dev/null || nvm install
+}
+autoload -Uz add-zsh-hook
+add-zsh-hook chpwd _auto_nvmrc
+_auto_nvmrc
 
 # ╭──────────────────────────────────────────╮
 # │                Bun                       │
