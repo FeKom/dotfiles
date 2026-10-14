@@ -29,7 +29,7 @@ Terminal-only setup using `apt` and `git clone` (no `curl | sh`):
 - native prompt (`.config/zsh/prompt.zsh`), mirroring the Oh My Posh theme
 - eza, zoxide, fzf, direnv, tmux, JetBrains Mono font
 - nvm (git clone), Node LTS with npm, yarn
-- Neovim from `ppa:neovim-ppa/unstable` (LazyVim needs >= 0.11), ripgrep, fd
+- Neovim via `snap install nvim --classic` (LazyVim needs >= 0.11), ripgrep, fd
 
 Ghostty and Zed configs are not linked on Ubuntu.
 

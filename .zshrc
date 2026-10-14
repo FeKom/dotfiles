@@ -40,6 +40,9 @@ _source_first \
   /usr/share/zsh/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh \
   "$HOME/.zsh/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh"
 
+# Snap apps (nvim) live in /snap/bin, which not every zsh session inherits.
+[[ -d /snap/bin && ":$PATH:" != *":/snap/bin:"* ]] && export PATH="$PATH:/snap/bin"
+
 # ╭──────────────────────────────────────────╮
 # │         Zoxide (smarter cd)               │
 # ╰──────────────────────────────────────────╯

@@ -71,15 +71,13 @@ install_packages_debian() {
   sudo apt-get install -y eza || warn "eza not available in apt, skipping"
 }
 
-# LazyVim needs Neovim >= 0.11; Ubuntu's own package is older and the
-# stable PPA has no build for recent releases, so use the unstable PPA.
+# LazyVim needs Neovim >= 0.11; Ubuntu's apt package is older, so use the
+# official snap (stable release, classic confinement).
 install_neovim_debian() {
-  log "Installing Neovim from ppa:neovim-ppa/unstable..."
-  sudo apt-get install -y software-properties-common
-  sudo add-apt-repository -y ppa:neovim-ppa/unstable
-  sudo apt-get update -qq
+  log "Installing Neovim via snap..."
+  sudo snap install nvim --classic
   # python3-venv: Mason installs Python tools (debugpy, black) in venvs.
-  sudo apt-get install -y neovim ripgrep fd-find unzip xclip python3-venv
+  sudo apt-get install -y ripgrep fd-find unzip xclip python3-venv
 }
 
 # nvm has no apt package; this is nvm's documented manual (git) install.

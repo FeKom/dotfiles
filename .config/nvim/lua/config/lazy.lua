@@ -37,9 +37,6 @@ require("lazy").setup({
   }, -- automatically check for plugin updates
   performance = {
     rtp = {
-      -- Debian/Ubuntu packages keep bundled treesitter parsers in a multiarch
-      -- dir (/usr/lib/<arch>/nvim) that lazy.nvim's rtp reset drops.
-      paths = vim.fn.glob("/usr/lib/*/nvim", false, true),
       -- disable some rtp plugins
       disabled_plugins = {
         "gzip",
